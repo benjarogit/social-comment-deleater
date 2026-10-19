@@ -123,6 +123,12 @@ button:disabled {
   font-size: 11px;
 }
 
+.hint a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .hint.tight {
   margin: 4px 0 0;
 }

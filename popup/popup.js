@@ -284,6 +284,19 @@ async function send(type) {
   }
 }
 
+const helpLink = $("helpLink");
+if (helpLink) {
+  helpLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    const url = helpLink.href;
+    if (browser.tabs?.create) {
+      browser.tabs.create({ url });
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+  });
+}
+
 els.detect.addEventListener("click", () => detectAccount({ silent: false, preferAuto: true }));
 els.probe.addEventListener("click", () => send("scc:probe"));
 els.start.addEventListener("click", () => send("scc:start"));

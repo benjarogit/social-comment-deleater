@@ -1,53 +1,69 @@
 # Social Comment Cleaner
 
-Browser extension that helps you clean **your own** comments on TikTok Web — carefully, with confirmation dialogs, adaptive pacing, and a floating control panel.
+Browser-Erweiterung zum Bereinigen **eigener** Kommentare auf TikTok Web — mit Bestätigung, adaptivem Tempo und schwimmendem Panel.
 
-> TikTok first · Firefox + Chromium (Chrome / Edge / Brave / Vivaldi)
+> TikTok · Firefox · Chromium (Chrome / Edge / Brave / **Vivaldi**)
 
-## Features
+**Aktuelle Builds:** [Releases](https://github.com/benjarogit/social-comment-deleater/releases)
 
-- Auto-detect logged-in account via `@handle`
-- Optional English UI for stable selectors
-- Activity → Comments inbox walkthrough
-- Smart delete policy:
-  - **Own top-level comment** → delete parent (whole thread goes away)
-  - **Own reply under someone else** → delete only that reply
-- Adaptive pacing (faster when stable, slower on errors)
-- Floating panel on the page + detachable control window
-
-## Install from GitHub Releases (CI builds)
-
-Every push to `main` and every tag `v*` builds packages via GitHub Actions:
-
-| File | Browser |
-|------|---------|
+| Datei | Browser |
+|--------|---------|
 | `social-comment-cleaner-*-firefox.xpi` | Firefox |
 | `social-comment-cleaner-*-chromium.zip` | Chrome, Edge, Brave, Vivaldi |
 
-Artifacts: **Actions → latest workflow → Artifacts**, or a **Release** when you push a tag like `v0.3.0`.
+---
 
-### Firefox (XPI)
+## Installation
 
-1. Download the `.xpi`
-2. `about:addons` → gear → **Install Add-on From File…**  
-   *(or drag the `.xpi` onto Firefox)*  
-3. Temporary alternative: `about:debugging` → Load Temporary Add-on → `manifest.json` from a clone
+Es gibt zwei Wege: **temporär testen** (schnell, verschwindet oft nach Neustart) und **dauerhaft laden** (Ordner/Datei behalten).
 
-> Unsigned XPI from GitHub may need temporary install via `about:debugging` depending on Firefox channel/policy.
+### A) Firefox — temporär laden (empfohlen zum Testen)
 
-### Chromium / Vivaldi / Edge / Brave (ZIP)
+So bleibt die Erweiterung ohne Store-Signatur nutzbar:
 
-1. Download `*-chromium.zip` from [Releases](https://github.com/benjarogit/social-comment-deleater/releases) and **unzip** it  
-   (or run `npm run build` and use `dist/chromium-src/`)
-2. Open the extensions page:
-   - **Vivaldi:** `vivaldi://extensions`
-   - Chrome: `chrome://extensions`
-   - Edge: `edge://extensions`
-   - Brave: `brave://extensions`
-3. Enable **Developer mode**
-4. **Load unpacked** → choose the unzipped folder (the one that contains `manifest.json`)
+1. Repo klonen **oder** Release-ZIP/XPI-Inhalt entpacken **oder** lokal `npm run build` → Ordner `dist/firefox-src/`
+2. Firefox öffnen und in die Adresszeile eingeben:  
+   `about:debugging#/runtime/this-firefox`
+3. **Temporäres Add-on laden…** / **Load Temporary Add-on…**
+4. Datei `manifest.json` im Erweiterungsordner wählen  
+   (Root des Ordners mit `manifest.json`, `content/`, `popup/`, …)
+5. Tab auf [tiktok.com](https://www.tiktok.com) öffnen und **einmal neu laden**
+6. Extension-Icon in der Toolbar → Probe / Start
 
-## Develop locally
+**Wichtig:** Temporäre Add-ons verschwinden meist nach einem Firefox-Neustart. Dann Schritte 2–4 wiederholen (Reload auf der Debugging-Seite reicht manchmal).
+
+### B) Firefox — aus Release-Datei (.xpi)
+
+1. Neueste `.xpi` von [Releases](https://github.com/benjarogit/social-comment-deleater/releases) herunterladen
+2. Versuch A — Installieren aus Datei:  
+   `about:addons` → Zahnrad → **Add-on aus Datei installieren…**
+3. Wenn Firefox die unsignierte XPI ablehnt → **Methode A (temporär)** nutzen  
+   Ungesignierte Community-XPIs werden von Release-Firefox oft blockiert; `about:debugging` ist dann der korrekte Weg, bis es eine AMO-Signierung gibt.
+
+### C) Vivaldi / Chrome / Edge / Brave — dauerhaft als „unpacked“
+
+Chromium-Browser erlauben Entwickler-Erweiterungen aus einem Ordner (ohne Chrome Web Store):
+
+1. `social-comment-cleaner-*-chromium.zip` von [Releases](https://github.com/benjarogit/social-comment-deleater/releases) laden
+2. ZIP **vollständig entpacken** (Ordner muss `manifest.json` enthalten)
+3. Erweiterungsseite öffnen:
+
+   | Browser | Adresse |
+   |---------|---------|
+   | **Vivaldi** | `vivaldi://extensions` |
+   | Chrome | `chrome://extensions` |
+   | Edge | `edge://extensions` |
+   | Brave | `brave://extensions` |
+
+4. **Entwicklermodus** / **Developer mode** einschalten
+5. **Entpackte Erweiterung laden** / **Load unpacked**
+6. Den **entpackten Ordner** wählen (nicht die ZIP-Datei)
+7. TikTok-Tab öffnen und **neu laden**
+8. Extension-Icon → Probe / Start (oder **Pin on page** / **Open window**)
+
+**Nach Browser-Update / Pfadänderung:** Falls die Erweiterung deaktiviert wird, unter Erweiterungen erneut **Load unpacked** auf denselben Ordner zeigen. Den Ordner nicht löschen oder verschieben.
+
+**Lokal bauen statt Release:**
 
 ```bash
 git clone https://github.com/benjarogit/social-comment-deleater.git
@@ -55,55 +71,68 @@ cd social-comment-deleater
 npm run build
 ```
 
-Outputs in `dist/`:
+Dann bei „Load unpacked“ den Ordner `dist/chromium-src/` wählen.
 
-- `*-firefox.xpi`
-- `*-chromium.zip`
-- `firefox-src/` / `chromium-src/` (unpacked, for Load Temporary / Load unpacked)
+---
+
+## Bedienung
+
+1. Auf TikTok einloggen
+2. Optional einmal **Probe** (prüft nur Selektoren, löscht nichts) — Account oben prüfen (`@deinhandle`)
+3. **Start** — läuft über Activity → Comments
+4. Fortschritt im **Pin-Panel** oder **Open window** beobachten (Firefox/Vivaldi weiter nutzbar)
+5. Jederzeit **Stop**
+
+### Lösch-Logik
+
+| Situation | Aktion |
+|-----------|--------|
+| Eigener Top-Level-Kommentar | Nur Parent löschen → ganzer Thread weg |
+| Eigene Antwort unter fremdem Kommentar | Nur diese Antwort löschen |
+
+Base-Delay (~700 ms) ist Startwert; das Tempo passt sich an (schneller bei Erfolg, langsamer bei Fehlern).
+
+### Falls der Account falsch angezeigt wird
+
+- TikTok-Tab neu laden, einmal **Probe**
+- Fallback im Popup nur nutzen, wenn Auto-Detect scheitert (dein `@handle` ohne `@`)
+
+---
+
+## Sicherheit / Hinweise
+
+- Löscht nur Kommentare, die zu deinem erkannten **`@handle`** gehören
+- Nutzt die normale TikTok-Oberfläche inkl. „Are you sure…?“-Dialog
+- Nutzung auf eigene Verantwortung; TikTok-Nutzungsbedingungen beachten
+- TikTok-UI-Änderungen können Selektoren brechen — dann Issue melden / Probe-Log schicken
+
+---
+
+## Features (Kurz)
+
+- Auto-Detect des eingeloggten Accounts
+- Optional UI auf English (US)
+- Adaptives Pacing, schwimmendes Panel, ausgelagertes Fenster
+- CI baut bei jedem Tag `v*` automatisch XPI + Chromium-ZIP
+
+---
+
+## Entwicklung
 
 ```bash
-npm run build:firefox    # XPI only
-npm run build:chromium   # ZIP only
+npm run build           # Firefox .xpi + Chromium .zip → dist/
+npm run build:firefox
+npm run build:chromium
 ```
 
-## Usage
-
-1. Prefer **Probe** once (checks selectors, deletes nothing)
-2. **Start** on a logged-in TikTok tab
-3. Watch progress in the pinned panel or detached window
-4. **Stop** anytime
-
-Base delay (default ~700 ms) is only a starting point — pacing adapts automatically.
-
-## Safety notes
-
-- Deletes **only your** comments (matched by `@handle`)
-- Uses TikTok’s normal UI + confirm modal
-- Respect platform terms of use; use at your own risk
-- UI changes on TikTok can break selectors — Probe helps diagnose
-
-## Project layout
-
 ```
-manifest.json              # Firefox (MV2) — load this for local Firefox testing
-manifests/chromium.json    # Chromium (MV3) source for builds
-lib/browser-api.js         # browser/chrome shim
-background/                # shared background + Chromium service worker entry
-content/                   # TikTok automation + floating panel
-popup/  panel/  icons/
-scripts/build.mjs
+manifest.json              # Firefox (MV2) — für about:debugging
+manifests/chromium.json    # Chromium (MV3)
+lib/browser-api.js         # browser/chrome Shim
 .github/workflows/build.yml
 ```
 
-## Release a version
-
-```bash
-# bump version in manifest.json (+ manifests/chromium.json is synced at build time)
-git tag v0.3.0
-git push origin v0.3.0
-```
-
-CI creates a GitHub Release with XPI + ZIP attached.
+Release: Version in `manifest.json` erhöhen, taggen (`v0.3.2`), pushen — CI hängt die Pakete an den GitHub Release.
 
 ## License
 

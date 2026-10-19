@@ -113,6 +113,12 @@ input:focus {
   font-weight: 650;
 }
 
+.hint a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .row {
   display: flex;
   gap: 6px;
