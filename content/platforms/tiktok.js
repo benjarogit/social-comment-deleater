@@ -616,11 +616,36 @@
     return null;
   }
 
-  /** Best-effort: who is logged in? Prefer @handle over fancy display names. */
-  function detectLoggedInUser() {
-    const { textOf, findButtonByAnyLabel, visible } = helpers();
+  function fromAppContextJson() {
+    // ONLY logged-in user from app-context — never user-detail (viewed profile) or Following list
+    const scriptIds = ["#__UNIVERSAL_DATA_FOR_REHYDRATION__", "#SIGI_STATE", "#__NEXT_DATA__"];
+    for (const sel of scriptIds) {
+      try {
+        const el = document.querySelector(sel);
+        if (!el?.textContent) continue;
+        const data = JSON.parse(el.textContent);
+        const user =
+          data?.__DEFAULT_SCOPE__?.["webapp.app-context"]?.user ||
+          data?.AppContext?.appContext?.user ||
+          data?.appContext?.user ||
+          null;
+        const parsed = userFromObject(user, "app-context");
+        if (parsed) return parsed;
+      } catch {
+        /* ignore */
+      }
+    }
+    return null;
+  }
 
-    // 1) Own profile page (Edit profile visible)
+  /**
+   * Who is logged in? Strict sources only — never Following-account avatars.
+   * Priority: own profile page → app-context JSON → explicit Profile nav item.
+   */
+  function detectLoggedInUser() {
+    const { textOf, findButtonByAnyLabel } = helpers();
+
+    // 1) Own profile page (Edit profile / Profil bearbeiten visible)
     const pathHandle = SCC.handleFromHref(location.pathname);
     if (pathHandle) {
       const edit =
@@ -639,103 +664,55 @@
       }
     }
 
-    // 2) Side nav Profile → /@handle
+    // 2) Embedded logged-in user (most reliable when not on own profile)
+    const fromJson = fromAppContextJson();
+    if (fromJson) return fromJson;
+
+    // 3) Explicit Profile nav only (NOT "Following accounts" avatars)
     const navRoot = sideNavRoot();
-    const profileAnchors = [...navRoot.querySelectorAll('a[href*="/@"]')];
-    for (const a of profileAnchors) {
-      const label = `${a.getAttribute("aria-label") || ""} ${textOf(a)}`.toLowerCase();
-      if (!/profile|profil/.test(label) && !a.querySelector("img")) continue;
-      const handle = SCC.handleFromHref(a.getAttribute("href"));
+    const byE2e =
+      navRoot.querySelector('a[data-e2e="nav-profile"]') ||
+      document.querySelector('a[data-e2e="nav-profile"]');
+    if (byE2e) {
+      const handle = SCC.handleFromHref(byE2e.getAttribute("href") || "");
       if (handle) {
         return {
           handle,
-          displayName: textOf(a.querySelector("p, span")) || handle,
-          source: "nav-profile",
+          displayName: textOf(byE2e.querySelector("p, span")) || handle,
+          source: "nav-profile-e2e",
         };
       }
     }
 
     const profileBtn = findButtonByAnyLabel(["Profile", "Profil"], { exact: true, root: navRoot });
     if (profileBtn) {
-      const href =
-        profileBtn.closest("a")?.getAttribute("href") ||
-        profileBtn.querySelector("a")?.getAttribute("href") ||
-        profileBtn.getAttribute("href");
-      const handle = SCC.handleFromHref(href || "");
-      if (handle) {
-        return { handle, displayName: textOf(profileBtn) || handle, source: "nav-profile-btn" };
-      }
-    }
-
-    // 3) Rehydration / SIGI / next data blobs
-    const scriptIds = [
-      "#__UNIVERSAL_DATA_FOR_REHYDRATION__",
-      "#SIGI_STATE",
-      "#__NEXT_DATA__",
-    ];
-    for (const sel of scriptIds) {
-      try {
-        const el = document.querySelector(sel);
-        if (!el?.textContent) continue;
-        const data = JSON.parse(el.textContent);
-        const scoped =
-          data?.__DEFAULT_SCOPE__?.["webapp.app-context"]?.user ||
-          data?.__DEFAULT_SCOPE__?.["webapp.user-detail"]?.userInfo?.user ||
-          data?.AppContext?.appContext?.user ||
-          data?.UserModule?.users;
-        const fromScoped = userFromObject(
-          Array.isArray(scoped) ? null : scoped,
-          sel.replace("#", "")
-        );
-        if (fromScoped) return fromScoped;
-        if (scoped && typeof scoped === "object") {
-          const first = Object.values(scoped)[0];
-          const u = userFromObject(first, sel.replace("#", ""));
-          if (u) return u;
-        }
-        const dug = digUserInJson(data);
-        if (dug) {
-          dug.source = sel.replace("#", "");
-          return dug;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // 4) Any uniqueId in inline scripts (last resort, constrained)
-    try {
-      const scripts = [...document.querySelectorAll("script:not([src])")].slice(0, 40);
-      for (const s of scripts) {
-        const text = s.textContent || "";
-        if (!/uniqueId|unique_id/.test(text)) continue;
-        const m = text.match(/"uniqueId"\s*:\s*"([^"]+)"/) || text.match(/"unique_id"\s*:\s*"([^"]+)"/);
-        const nick =
-          text.match(/"nickname"\s*:\s*"([^"]+)"/) || text.match(/"nickName"\s*:\s*"([^"]+)"/);
-        if (m?.[1]) {
+      // Must be the nav Profile control — skip if inside Following list
+      if (profileBtn.closest('[class*="Following"], [data-e2e*="suggest"], [data-e2e*="follow"]')) {
+        /* skip */
+      } else {
+        const href =
+          profileBtn.closest("a")?.getAttribute("href") ||
+          profileBtn.querySelector("a")?.getAttribute("href") ||
+          profileBtn.getAttribute("href");
+        const handle = SCC.handleFromHref(href || "");
+        if (handle) {
           return {
-            handle: SCC.normalizeHandle(m[1]),
-            displayName: nick?.[1] || m[1],
-            source: "inline-script",
+            handle,
+            displayName: textOf(profileBtn.querySelector("p, span")) || handle,
+            source: "nav-profile-btn",
           };
         }
       }
-    } catch {
-      /* ignore */
     }
 
-    // 5) Visible avatar linking to /@… in top chrome (often current user)
-    const topLinks = [...document.querySelectorAll('a[href^="/@"]')].filter(visible);
-    for (const a of topLinks) {
-      if (!a.querySelector("img")) continue;
-      const handle = SCC.handleFromHref(a.getAttribute("href"));
-      // Skip video author links in FYP that aren't profile nav — weak signal
-      if (handle && a.closest('[class*="DivSideNav"], [class*="MainNav"], header, nav')) {
-        return {
-          handle,
-          displayName: textOf(a) || handle,
-          source: "chrome-avatar",
-        };
+    // Anchors whose accessible name is exactly Profile/Profil (not random img links)
+    for (const a of navRoot.querySelectorAll('a[href*="/@"]')) {
+      if (a.closest('[class*="Following"], [data-e2e*="suggest"], [class*="UserCard"]')) continue;
+      const label = `${a.getAttribute("aria-label") || ""} ${textOf(a)}`.trim().toLowerCase();
+      if (label !== "profile" && label !== "profil") continue;
+      const handle = SCC.handleFromHref(a.getAttribute("href") || "");
+      if (handle) {
+        return { handle, displayName: handle, source: "nav-profile-label" };
       }
     }
 
@@ -1133,6 +1110,15 @@
     );
 
     const identity = resolveIdentity(ctx);
+    // Always publish identity so panel/window never show a stale wrong account
+    ctx.status.identity = {
+      handle: identity.handle || "",
+      displayName: identity.displayName || "",
+      source: identity.source,
+      auto: identity.auto,
+    };
+    ctx.identity = identity;
+
     const own = identity.handle || identity.displayName ? findOwnComments(identity) : [];
     push(
       Boolean(identity.handle || identity.displayName),
@@ -1166,6 +1152,7 @@
     report(ctx, {
       message: summary.slice(0, 500),
       probeLog: lines,
+      identity: ctx.status.identity,
     });
     console.info("[SCC probe]", lines);
     return lines;

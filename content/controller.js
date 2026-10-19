@@ -77,25 +77,27 @@
       return snapshot();
     }
 
-    // Preflight: need either override or a detectable session
-    if (mode === "clean") {
-      const detected =
-        typeof platform.detectUser === "function" ? platform.detectUser() : null;
-      if (!handle && !displayName && !detected?.handle) {
-        status.message =
-          "Account not found automatically. Enter your handle as fallback (without @), e.g. dokukanalq.";
-        status.identity = null;
-        return snapshot();
-      }
-      status.identity = detected
-        ? {
-            handle: handle || detected.handle,
-            displayName: displayName || detected.displayName,
-            source: handle ? "user-override" : detected.source,
-            auto: !handle,
-          }
-        : { handle, displayName, source: "user-override", auto: false };
+    // Fresh detect every run — never keep a stale wrong account in the UI
+    const detected =
+      typeof platform.detectUser === "function" ? platform.detectUser() : null;
+    if (mode === "clean" && !handle && !displayName && !detected?.handle) {
+      status.message =
+        "Account not found automatically. Enter your handle as fallback (without @), e.g. dokukanalq.";
+      status.identity = null;
+      publish();
+      return snapshot();
     }
+    status.identity = detected
+      ? {
+          handle: handle || detected.handle,
+          displayName: displayName || detected.displayName,
+          source: handle ? "user-override" : detected.source,
+          auto: !handle,
+        }
+      : handle || displayName
+        ? { handle, displayName, source: "user-override", auto: false }
+        : null;
+    publish();
 
     activeAbort = new AbortController();
     status.running = true;
@@ -264,6 +266,31 @@
     }
   }
 
+  /** Keep panel/window in sync with the real logged-in account. */
+  function refreshIdentity() {
+    try {
+      const platform = detectPlatform();
+      if (!platform || typeof platform.detectUser !== "function") return;
+      const detected = platform.detectUser();
+      if (!detected?.handle) return;
+      const prev = status.identity?.handle;
+      if (prev && prev !== detected.handle) {
+        console.warn("[SCC] correcting identity", prev, "→", detected.handle);
+      }
+      status.identity = {
+        handle: detected.handle,
+        displayName: detected.displayName || "",
+        source: detected.source,
+        auto: true,
+      };
+      publish();
+    } catch (err) {
+      console.warn("[SCC] refreshIdentity failed", err);
+    }
+  }
+
   console.info("[SCC] content ready on", location.hostname);
+  refreshIdentity();
+  setInterval(refreshIdentity, 8000);
   maybeResume();
 })();
