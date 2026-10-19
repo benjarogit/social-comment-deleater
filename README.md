@@ -79,7 +79,8 @@ Dann bei „Load unpacked“ den Ordner `dist/chromium-src/` wählen.
 
 1. Auf TikTok einloggen
 2. Optional einmal **Probe** (prüft nur Selektoren, löscht nichts) — Account oben prüfen (`@deinhandle`)
-3. **Start** — läuft über Activity → Comments
+3. **Start** — läuft über Activity → Comments  
+   (die Notifications-Liste wird **mitgescrollt**, damit ältere Einträge nachgeladen werden)
 4. Fortschritt im **Pin-Panel** oder **Open window** beobachten (Firefox/Vivaldi weiter nutzbar)
 5. Jederzeit **Stop**
 

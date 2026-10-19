@@ -121,7 +121,101 @@
 
   function inboxItems() {
     const { visible } = helpers();
-    return [...document.querySelectorAll('[data-e2e="inbox-list-item"]')].filter(visible);
+    const root =
+      document.querySelector('[data-e2e="inbox-notifications"]') ||
+      document.querySelector('[class*="DivInboxContainer"]') ||
+      document;
+    return [...root.querySelectorAll('[data-e2e="inbox-list-item"]')].filter(visible);
+  }
+
+  /** The Notifications drawer scrolls and lazy-loads more comment activities. */
+  function inboxScrollRoot() {
+    const inbox =
+      document.querySelector('[data-e2e="inbox-notifications"]') ||
+      document.querySelector('[class*="DivInboxContainer"]');
+    if (!inbox) return null;
+
+    const preferred = [
+      inbox.querySelector("#header-inbox-list"),
+      inbox.querySelector('[class*="UlInboxItemListContainer"]')?.parentElement,
+      inbox.querySelector('[class*="DivInboxList"]'),
+      inbox,
+    ].filter(Boolean);
+
+    for (const el of preferred) {
+      if (el.scrollHeight > el.clientHeight + 8) return el;
+    }
+
+    // Deepest scrollable descendant inside the drawer
+    let best = inbox;
+    let bestDelta = inbox.scrollHeight - inbox.clientHeight;
+    for (const el of inbox.querySelectorAll("div, ul, section")) {
+      const delta = el.scrollHeight - el.clientHeight;
+      if (delta > bestDelta + 20) {
+        best = el;
+        bestDelta = delta;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Scroll the Comments inbox to the end so TikTok loads older notifications.
+   * @returns {Promise<number>} newly appeared inbox items (may be 0)
+   */
+  async function loadMoreInboxNotifications(ctx) {
+    const { waitFor } = helpers();
+    const scroller = inboxScrollRoot();
+    if (!scroller) return 0;
+
+    const beforeCount = inboxItems().length;
+    const beforeHeight = scroller.scrollHeight;
+
+    report(ctx, {
+      message: `Loading more notifications… (${beforeCount} so far)`,
+    });
+
+    for (let step = 0; step < 6; step++) {
+      if (ctx.signal.aborted) throw new DOMException("Aborted", "AbortError");
+      scroller.scrollTop = scroller.scrollHeight;
+      scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+      // Wheel nudge helps some virtualized lists
+      scroller.dispatchEvent(
+        new WheelEvent("wheel", { bubbles: true, deltaY: 800, cancelable: true })
+      );
+      await pace(ctx, "settle");
+
+      const grew = await waitFor(
+        () =>
+          inboxItems().length > beforeCount || scroller.scrollHeight > beforeHeight + 30,
+        { signal: ctx.signal, timeout: 2200, interval: 120 }
+      );
+      if (grew) break;
+    }
+
+    await pace(ctx, "gap");
+    const added = Math.max(0, inboxItems().length - beforeCount);
+    if (added > 0) {
+      report(ctx, {
+        message: `Loaded +${added} notification(s) (now ${inboxItems().length}).`,
+      });
+    }
+    return added;
+  }
+
+  /** Prefetch several pages of inbox items before / while cleaning. */
+  async function prefetchInboxPages(ctx, { maxPasses = 8 } = {}) {
+    let stagnant = 0;
+    for (let i = 0; i < maxPasses; i++) {
+      if (ctx.signal.aborted) throw new DOMException("Aborted", "AbortError");
+      const added = await loadMoreInboxNotifications(ctx);
+      if (added > 0) {
+        stagnant = 0;
+        continue;
+      }
+      stagnant += 1;
+      if (stagnant >= 2) break;
+    }
   }
 
   function moreDrawer() {
@@ -298,6 +392,10 @@
       () => inboxItems().length > 0 || document.querySelector('[data-e2e="inbox-notifications"]'),
       { signal: ctx.signal, timeout: 15000 }
     );
+
+    // Prefetch older comment notifications (drawer is infinite-scroll)
+    report(ctx, { message: "Scrolling inbox to load more comment notifications…" });
+    await prefetchInboxPages(ctx, { maxPasses: 6 });
     await ctx.persistPhase?.("clean_loop");
   }
 
@@ -1097,7 +1195,15 @@
     push(Boolean(inbox), "Inbox panel", inbox ? "present" : "closed (open Activity first)");
 
     const items = inboxItems();
+    const scroller = inboxScrollRoot();
     push(items.length > 0, "Inbox items", `${items.length} visible`);
+    push(
+      Boolean(scroller),
+      "Inbox scroll",
+      scroller
+        ? `scrollHeight=${scroller.scrollHeight} clientHeight=${scroller.clientHeight}`
+        : "no scroller (open Activity → Comments)"
+    );
 
     const commentsOnPage = commentItemWrappers();
     push(commentsOnPage.length > 0, "Comment rows", `${commentsOnPage.length} on page`);
@@ -1218,20 +1324,31 @@
       }
 
       let idleRounds = 0;
-      while (!ctx.signal.aborted && idleRounds < 3) {
+      const idleLimit = 5;
+      while (!ctx.signal.aborted && idleRounds < idleLimit) {
         await ctx.persistPhase?.("clean_loop", { seen: [...ctx.seen] });
         const items = inboxItems().filter(
           (el) => !ctx.seen.has(helpers().uniqueKey(helpers().textOf(el)))
         );
         if (!items.length) {
+          // Try lazy-load more via scroll before giving up
+          const added = await loadMoreInboxNotifications(ctx);
+          const afterScroll = inboxItems().filter(
+            (el) => !ctx.seen.has(helpers().uniqueKey(helpers().textOf(el)))
+          );
+          if (added > 0 || afterScroll.length) {
+            idleRounds = 0;
+            if (afterScroll.length) {
+              await processInboxItem(ctx, afterScroll[0]);
+            }
+            continue;
+          }
+
           idleRounds += 1;
-          report(ctx, { message: `No new comment notifications (${idleRounds}/3)…` });
-          const list =
-            document.querySelector("#header-inbox-list") ||
-            document.querySelector('[data-e2e="inbox-notifications"]');
-          if (list) list.scrollTop = list.scrollHeight;
-          await pace(ctx);
-          await helpers().sleep(ctx.delayMs);
+          report(ctx, {
+            message: `No more notifications to load (${idleRounds}/${idleLimit})…`,
+          });
+          await pace(ctx, "gap");
           continue;
         }
 
@@ -1240,7 +1357,7 @@
       }
 
       report(ctx, {
-        message: `Done. Deleted ${ctx.status.deleted} comment(s) across ${ctx.status.processed} notification(s).`,
+        message: `Done. Deleted ${ctx.status.deleted} comment(s) across ${ctx.status.processed} notification(s) (${inboxItems().length} listed).`,
       });
       await ctx.clearJob?.();
     } finally {
