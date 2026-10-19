@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Social Comment Cleaner</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Comment Cleaner</h1>
+      <p class="subtitle">TikTok · Firefox</p>
+    </header>
+
+    <section class="account" aria-live="polite">
+      <div class="account-label">Account</div>
+      <div id="accountLine" class="account-line">Detecting…</div>
+      <p id="accountHint" class="hint tight">Logged-in @handle is detected automatically.</p>
+    </section>
+
+    <details id="overrideBox" class="override">
+      <summary>Fallback if auto-detect fails</summary>
+      <label class="field">
+        <span>@handle override (optional)</span>
+        <div class="row">
+          <span class="at" aria-hidden="true">@</span>
+          <input
+            id="handle"
+            type="text"
+            autocomplete="username"
+            placeholder="dokukanalq"
+            spellcheck="false"
+          />
+          <button id="detect" type="button" class="secondary tight" title="Detect again">
+            Detect
+          </button>
+        </div>
+      </label>
+      <label class="field">
+        <span>Display name fallback (optional)</span>
+        <input
+          id="displayName"
+          type="text"
+          placeholder='e.g. Was wäre wenn...'
+          spellcheck="false"
+        />
+      </label>
+    </details>
+
+    <label class="field">
+      <span>Base delay (ms) — adaptive</span>
+      <input id="delay" type="number" min="400" max="5000" step="100" value="700" />
+    </label>
+    <p class="hint tight">Startwert; wird bei Erfolg kürzer, bei Fehlern länger.</p>
+
+    <label class="check">
+      <input id="ensureEnglish" type="checkbox" checked />
+      <span>Force UI language to English (US)</span>
+    </label>
+
+    <div class="actions">
+      <button id="probe" type="button" class="secondary">Probe</button>
+      <button id="start" type="button" class="primary">Start</button>
+      <button id="stop" type="button" class="danger" disabled>Stop</button>
+    </div>
+    <div class="actions dock">
+      <button id="pinPage" type="button" class="secondary">Pin on page</button>
+      <button id="openWindow" type="button" class="secondary">Open window</button>
+    </div>
+    <p class="hint">
+      Pin/Window: Lauf beobachten. TikTok-Tab kann im Hintergrund bleiben — Firefox weiter nutzbar.
+    </p>
+
+    <section class="status" aria-live="polite">
+      <div class="status-row">
+        <span class="label">State</span>
+        <span id="state">idle</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Progress</span>
+        <span id="progress">—</span>
+      </div>
+      <p id="message" class="message">Open TikTok — account is detected automatically.</p>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

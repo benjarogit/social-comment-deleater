@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comment Cleaner</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Comment Cleaner</h1>
+      <p class="subtitle">Detached window · stays open while you browse</p>
+    </header>
+
+    <section class="account" aria-live="polite">
+      <div class="account-label">Account</div>
+      <div id="accountLine" class="account-line">Looking for TikTok tab…</div>
+      <p id="accountHint" class="hint tight">Uses the active TikTok tab in this browser.</p>
+    </section>
+
+    <label class="field">
+      <span>Base delay (ms) — adaptive</span>
+      <input id="delay" type="number" min="400" max="5000" step="100" value="700" />
+    </label>
+
+    <label class="check">
+      <input id="ensureEnglish" type="checkbox" checked />
+      <span>Force UI language to English (US)</span>
+    </label>
+
+    <details class="override">
+      <summary>Fallback if auto-detect fails</summary>
+      <label class="field">
+        <span>@handle override (optional)</span>
+        <div class="row">
+          <span class="at">@</span>
+          <input id="handle" type="text" placeholder="dokukanalq" spellcheck="false" />
+        </div>
+      </label>
+      <label class="field">
+        <span>Display name fallback</span>
+        <input id="displayName" type="text" placeholder="Was wäre wenn..." spellcheck="false" />
+      </label>
+    </details>
+
+    <div class="actions">
+      <button id="probe" type="button" class="secondary">Probe</button>
+      <button id="start" type="button" class="primary">Start</button>
+      <button id="stop" type="button" class="danger" disabled>Stop</button>
+    </div>
+
+    <section class="status" aria-live="polite">
+      <div class="status-row">
+        <span class="label">State</span>
+        <span id="state">idle</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Progress</span>
+        <span id="progress">—</span>
+      </div>
+      <p id="message" class="message">Keep this window open to monitor the run.</p>
+    </section>
+
+    <p class="hint">
+      TikTok-Tab darf im Hintergrund bleiben — Firefox weiter nutzen. Fenster hier offen lassen zum Mitlesen.
+    </p>
+    <button id="pinPage" type="button" class="secondary full">Pin panel on TikTok page</button>
+
+    <script src="panel.js"></script>
+  </body>
+</html>
