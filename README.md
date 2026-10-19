@@ -35,12 +35,17 @@ Artifacts: **Actions → latest workflow → Artifacts**, or a **Release** when 
 
 > Unsigned XPI from GitHub may need temporary install via `about:debugging` depending on Firefox channel/policy.
 
-### Chromium (ZIP)
+### Chromium / Vivaldi / Edge / Brave (ZIP)
 
-1. Download / unzip the Chromium package (or use `dist/chromium-src` after `npm run build`)
-2. Open `chrome://extensions` (or `edge://extensions`, Brave equivalents)
+1. Download `*-chromium.zip` from [Releases](https://github.com/benjarogit/social-comment-deleater/releases) and **unzip** it  
+   (or run `npm run build` and use `dist/chromium-src/`)
+2. Open the extensions page:
+   - **Vivaldi:** `vivaldi://extensions`
+   - Chrome: `chrome://extensions`
+   - Edge: `edge://extensions`
+   - Brave: `brave://extensions`
 3. Enable **Developer mode**
-4. **Load unpacked** → select the unpacked folder (must contain `manifest.json`)
+4. **Load unpacked** → choose the unzipped folder (the one that contains `manifest.json`)
 
 ## Develop locally
 
