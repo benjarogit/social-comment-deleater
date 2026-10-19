@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Social Comment Cleaner",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Reliably clean your own comments on social platforms. Starts with TikTok Web.",
   "browser_specific_settings": {
     "gecko": {
@@ -12,6 +12,7 @@
   "permissions": [
     "storage",
     "tabs",
+    "windows",
     "*://*.tiktok.com/*"
   ],
   "browser_action": {
@@ -23,13 +24,14 @@
     "default_popup": "popup/popup.html"
   },
   "background": {
-    "scripts": ["background/background.js"],
+    "scripts": ["lib/browser-api.js", "background/background.js"],
     "persistent": false
   },
   "content_scripts": [
     {
       "matches": ["*://www.tiktok.com/*", "*://tiktok.com/*"],
       "js": [
+        "lib/browser-api.js",
         "content/shared.js",
         "content/platforms/tiktok.js",
         "content/controller.js",

@@ -1,4 +1,4 @@
-/** Background: detached panel window + messaging. */
+/** Background: detached panel window + messaging (Firefox + Chromium). */
 
 let panelWindowId = null;
 

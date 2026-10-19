@@ -1,0 +1,14 @@
+{
+  "name": "social-comment-cleaner",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Build Firefox XPI and Chromium ZIP packages",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:firefox": "node scripts/build.mjs firefox",
+    "build:chromium": "node scripts/build.mjs chromium"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
